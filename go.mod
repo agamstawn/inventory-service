@@ -1,4 +1,4 @@
-module inventory-service
+module github.com/agamstawn/inventory-service
 
 go 1.24.5
 
