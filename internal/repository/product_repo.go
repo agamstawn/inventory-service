@@ -12,6 +12,7 @@ type ProductRepository interface {
 	FindByID(id uint) (*models.Product, error)
 	Update(p *models.Product) error
 	AdjustStock(id uint, delta int, movementType models.MovementType, reason string) (*models.Product, error)
+	GetStockHistory(productID uint) ([]models.StockMovement, error)
 }
 
 type productRepo struct {
@@ -86,6 +87,16 @@ func (r *productRepo) AdjustStock(
 		return nil, err
 	}
 	return &product, nil
+}
+
+func (r *productRepo) GetStockHistory(productID uint) ([]models.StockMovement, error) {
+	var movements []models.StockMovement
+	result := r.db.
+		Where("product_id = ?", productID).
+		Order("created_at DESC").
+		Limit(100).
+		Find(&movements)
+	return movements, result.Error
 }
 
 func abs(x int) int {
