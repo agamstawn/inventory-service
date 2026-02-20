@@ -36,6 +36,8 @@ func (wp *WorkerPool) Start(ctx context.Context) {
 		go wp.runWorker(ctx, i)
 	}
 
+	go wp.runPeriodicScanner(ctx)
+
 	<-ctx.Done() 
 	log.Println("[WorkerPool] Shutting down")
 }
@@ -68,4 +70,18 @@ func (wp *WorkerPool) processAlert(job AlertJob) {
 	}
 
 	log.Printf("[Alert] Saved alert ID %d for product %d", alert.ID, job.Product.ID)
+}
+
+func (wp *WorkerPool) runPeriodicScanner(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			wp.scanLowStock()
+		case <-ctx.Done():
+			return
+		}
+	}
 }
