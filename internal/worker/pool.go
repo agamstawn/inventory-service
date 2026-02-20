@@ -85,3 +85,31 @@ func (wp *WorkerPool) runPeriodicScanner(ctx context.Context) {
 		}
 	}
 }
+
+func (wp *WorkerPool) Enqueue(job AlertJob) {
+	select {
+	case wp.jobs <- job:
+		log.Printf("[WorkerPool] Enqueued alert for product %d (stock: %d)", job.Product.ID, job.Stock)
+	default:
+		log.Printf("[WorkerPool] WARNING: job queue full, dropping alert for product %d", job.Product.ID)
+	}
+}
+
+func (wp *WorkerPool) scanLowStock() {
+	var products []models.Product
+
+	wp.db.Raw(`
+		SELECT * FROM products
+		WHERE stock <= low_stock_at
+		AND stock > 0
+	`).Scan(&products)
+
+	log.Printf("[Scanner] Found %d low-stock products", len(products))
+	for _, p := range products {
+		wp.Enqueue(AlertJob{
+			Product:   p,
+			Stock:     p.Stock,
+			Threshold: p.LowStockAt,
+		})
+	}
+}
